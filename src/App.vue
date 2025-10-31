@@ -1,11 +1,23 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import TreeTable from './components/TreeTable.vue';
+</script>
 
 <template>
-  <h1>You did it!</h1>
-  <p>
-    Visit <a href="https://vuejs.org/" target="_blank" rel="noopener">vuejs.org</a> to read the
-    documentation
-  </p>
+    <div id="app">
+        <h1>MStroy Test Task</h1>
+        <TreeTable />
+    </div>
 </template>
 
-<style scoped></style>
+<style scoped>
+#app {
+    width: 100%;
+    min-height: 100vh;
+}
+
+h1 {
+    padding: 20px;
+    margin: 0;
+    color: #2c3e50;
+}
+</style>
