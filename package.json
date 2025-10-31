@@ -15,10 +15,11 @@
     "type-check": "vue-tsc --build"
   },
   "dependencies": {
-    "vue": "^3.5.22",
     "ag-grid-community": "^31.2.1",
+    "ag-grid-enterprise": "^31.2.1",
     "ag-grid-vue3": "^31.2.1",
-    "ag-grid-enterprise": "^31.2.1"
+    "sass": "^1.93.2",
+    "vue": "^3.5.22"
   },
   "devDependencies": {
     "@tsconfig/node22": "^22.0.2",
