@@ -96,10 +96,18 @@ export class TreeStore {
     }
 
     addItem(item: TreeItem): void {
-        if (!this.items_map.has(item.id)) {
-            this.items.push(item);
-            this._buildIndexes();
+        if (this.items_map.has(item.id)) {
+            throw new Error(`Элемент с id ${item.id} уже существует`);
         }
+
+        if (item.parent !== null) {
+            if (!this.items_map.has(item.parent)) {
+                throw new Error(`Родительский элемент с id ${item.parent} не найден`);
+            }
+        }
+
+        this.items.push(item);
+        this._buildIndexes();
     }
 
     removeItem(id: number | string): void {
@@ -122,6 +130,19 @@ export class TreeStore {
 
         if (!existingItem) {
             throw new Error(`Элемент с id ${item.id} не найден`);
+        }
+
+        if (item.parent !== null) {
+            if (!this.items_map.has(item.parent)) {
+                throw new Error(`Родительский элемент с id ${item.parent} не найден`);
+            }
+
+            const all_children = this.getAllChildren(item.id);
+            const children_ids = new Set(all_children.map(child => child.id));
+            
+            if (children_ids.has(item.parent)) {
+                throw new Error(`Нельзя установить родителем элемент, который является потомком`);
+            }
         }
 
         const index = this.items.findIndex(i => i.id === item.id);

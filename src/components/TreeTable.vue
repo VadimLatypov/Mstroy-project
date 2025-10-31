@@ -29,7 +29,7 @@
                     <div class="form-group">
                         <label>ID:</label>
                         <input 
-                            v-model="formData.id" 
+                            v-model="form_data.id" 
                             type="text" 
                             :disabled="modalMode === 'edit'"
                             placeholder="Введите ID (число или строка)"
@@ -37,7 +37,7 @@
                     </div>
                     <div class="form-group">
                         <label>Родитель (ID):</label>
-                        <select v-model="formData.parent">
+                        <select v-model="form_data.parent">
                             <option :value="null">Нет (корневой элемент)</option>
                             <option 
                                 v-for="item in availableParents" 
@@ -51,7 +51,7 @@
                     <div class="form-group">
                         <label>Наименование:</label>
                         <input 
-                            v-model="formData.label" 
+                            v-model="form_data.label" 
                             type="text" 
                             placeholder="Введите наименование"
                         />
@@ -87,7 +87,7 @@ const group_default_expanded = ref(-1);
 
 const showModal = ref(false);
 const modalMode = ref<'add' | 'edit'>('add');
-const formData = ref({
+const form_data = ref({
     id: '',
     parent: null as number | string | null,
     label: ''
@@ -96,9 +96,9 @@ const formData = ref({
 const availableParents = computed(() => {
     const allItems = treeStore.getAll();
     
-    if (modalMode.value === 'edit' && formData.value.id) {
-        const childrenIds = new Set([formData.value.id]);
-        const allChildren = treeStore.getAllChildren(formData.value.id);
+    if (modalMode.value === 'edit' && form_data.value.id) {
+        const childrenIds = new Set([form_data.value.id]);
+        const allChildren = treeStore.getAllChildren(form_data.value.id);
         allChildren.forEach(child => childrenIds.add(child.id));
         
         return allItems.filter(item => !childrenIds.has(item.id));
@@ -112,8 +112,22 @@ const getDataPath = (data: TreeDataItem) => {
     return data.path;
 };
 
+interface AgGridCellParams {
+    node: {
+        rowPinned?: boolean;
+        rowIndex?: number;
+        group?: boolean;
+        allChildrenCount?: number;
+    };
+    data?: TreeDataItem;
+}
+
+interface AgGridCellRendererParams extends AgGridCellParams {
+    data: TreeDataItem;
+}
+
 // Порядковый номер строки
-const getRowNumber = (params: any) => {
+const getRowNumber = (params: AgGridCellParams): string | number => {
     if (params.node.rowPinned) {
         return '';
     }
@@ -122,7 +136,7 @@ const getRowNumber = (params: any) => {
 };
 
 // Категория
-const getCategory = (params: any) => {
+const getCategory = (params: AgGridCellParams): string => {
     if (params.node.group || (params.node.allChildrenCount && params.node.allChildrenCount > 0)) {
         return 'Группа';
     }
@@ -135,12 +149,17 @@ const getCategory = (params: any) => {
     return 'Элемент';
 };
 
-const deleteAction = (params: any) => {
+const deleteAction = (params: AgGridCellRendererParams): void => {
     const itemId = params.data.id;
+    const itemLabel = params.data.label || String(itemId);
     
-    if (confirm(`Удалить элемент "${params.data.label}" и все его дочерние элементы?`)) {
-        treeStore.removeItem(itemId);
-        loadData();
+    if (confirm(`Удалить элемент "${itemLabel}" и все его дочерние элементы?`)) {
+        try {
+            treeStore.removeItem(itemId);
+            loadData();
+        } catch (error) {
+            alert(error instanceof Error ? error.message : 'Ошибка при удалении');
+        }
     }
 };
 
@@ -172,19 +191,19 @@ const columnDefs = ref([
         headerName: 'ID',
         field: 'id',
         width: 150,
-        hide: false
+        hide: true
     },
     {
         headerName: 'Parent',
         field: 'parent',
         width: 150,
-        hide: false
+        hide: true
     },
     {
         headerName: 'Действия',
         width: 150,
         pinned: 'right',
-        cellRenderer: (params: any) => {
+        cellRenderer: (params: AgGridCellRendererParams) => {
             const button = document.createElement('button');
             button.className = 'btn btn-delete';
             button.textContent = 'Удалить';
@@ -205,7 +224,7 @@ const defaultColDef = {
 
 const openAddModal = () => {
     modalMode.value = 'add';
-    formData.value = {
+    form_data.value = {
         id: '',
         parent: null,
         label: ''
@@ -215,7 +234,7 @@ const openAddModal = () => {
 
 const openEditModal = (item: TreeItem) => {
     modalMode.value = 'edit';
-    formData.value = {
+    form_data.value = {
         id: String(item.id),
         parent: item.parent,
         label: item.label || ''
@@ -225,7 +244,7 @@ const openEditModal = (item: TreeItem) => {
 
 const closeModal = () => {
     showModal.value = false;
-    formData.value = {
+    form_data.value = {
         id: '',
         parent: null,
         label: ''
@@ -233,34 +252,43 @@ const closeModal = () => {
 };
 
 // Двойной клик по строке
-const handleRowDoubleClick = (params: any) => {
+const handleRowDoubleClick = (params: { data?: TreeDataItem }): void => {
     if (params.data) {
         openEditModal(params.data);
     }
 };
 
-const handleSave = () => {
-    if (!formData.value.id) {
+const handleSave = (): void => {
+    if (!form_data.value.id || form_data.value.id.trim() === '') {
         alert('ID не может быть пустым');
         return;
     }
 
-    if (!formData.value.label) {
+    if (!form_data.value.label || form_data.value.label.trim() === '') {
         alert('Наименование не может быть пустым');
         return;
     }
 
+    if (modalMode.value === 'edit' && form_data.value.parent !== null) {
+        const parentItem = treeStore.getItem(form_data.value.parent);
+        if (!parentItem) {
+            alert(`Родительский элемент с id ${form_data.value.parent} не найден`);
+            return;
+        }
+    }
+
     try {
-        let processedId: number | string = formData.value.id;
-        const numId = Number(formData.value.id);
-        if (!isNaN(numId) && formData.value.id.toString() === numId.toString()) {
+        let processedId: number | string = form_data.value.id.trim();
+        const numId = Number(processedId);
+        
+        if (!isNaN(numId) && processedId === numId.toString()) {
             processedId = numId;
         }
 
         const newItem: TreeItem = {
             id: processedId,
-            parent: formData.value.parent,
-            label: formData.value.label
+            parent: form_data.value.parent,
+            label: form_data.value.label.trim()
         };
 
         if (modalMode.value === 'add') {
@@ -331,7 +359,7 @@ onMounted(() => {
     }
 }
 
-.ag-theme-alpine :deep(.btn-delete) {
+:deep(.ag-cell .btn-delete) {
     padding: 5px 10px;
     background-color: #f44336;
     color: white;
@@ -340,13 +368,9 @@ onMounted(() => {
     cursor: pointer;
     font-size: 12px;
 
-    .btn-delete:hover {
+    &:hover {
         background-color: #da190b;
     }
-}
-
-.ag-theme-alpine :deep(.btn-delete:hover) {
-    background-color: #da190b;
 }
 
 

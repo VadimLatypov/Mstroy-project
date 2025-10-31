@@ -11,16 +11,3 @@ export const items: TreeItem[] = [
     { id: 7, parent: 4, label: 'Айтем 7' },
     { id: 8, parent: 4, label: 'Айтем 8' }
 ];
-
-// Тестирование TreeStore
-export const testTreeStore = () => {
-    const store = new TreeStore(items);
-
-    console.log('getAll', store.getAll());
-    console.log('getItem', store.getItem(1));
-    console.log('getChildren', store.getChildren(1));
-    console.log('getAllChildren', store.getAllChildren(1));
-    console.log('getAllParents', store.getAllParents(8));
-
-    return store;
-};
